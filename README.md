@@ -1,0 +1,2 @@
+# pajamas-sitemap
+sitemap generator
