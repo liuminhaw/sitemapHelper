@@ -1,0 +1,6 @@
+# Default output directory for example
+sitemaps/
+
+# Executable
+generator
+*.out

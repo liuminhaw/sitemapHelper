@@ -1,19 +1,17 @@
-package main
+package sitemapHelper
 
 import (
 	"bytes"
+	"context"
 	"encoding/xml"
-	"flag"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"net/url"
-	"os"
 	"strings"
 
-	"github.com/liuminhaw/sitemap/link"
-	"github.com/liuminhaw/sitemap/renderer"
+	"github.com/liuminhaw/renderer"
+	"github.com/liuminhaw/sitemapHelper/link"
 )
 
 const xmlns = "http://www.sitemaps.org/schemas/sitemap/0.9"
@@ -22,73 +20,59 @@ type loc struct {
 	Value string `xml:"loc"`
 }
 
-type urlset struct {
+type Urlset struct {
 	Urls  []loc  `xml:"url"`
 	Xmlns string `xml:"xmlns,attr"`
 }
 
-func main() {
-	urlFlag := flag.String("url", "https://gophercises.com", "the url that you want to build a sitemap for")
-	outputDir := flag.String("outputDir", "sitemaps", "directory where result sitemap will be stored")
-	maxDepth := flag.Int("depth", 3, "the maximum number of links deep to traverse")
-	render := flag.Bool("render", false, "indicate if the parsing url is single page application")
-	flag.Parse()
-
-	fmt.Println(*urlFlag)
-	submitUrl, err := url.Parse(*urlFlag)
-	if err != nil {
-		log.Fatal(err)
-	}
-	outputPath := fmt.Sprintf("%s/%s", *outputDir, submitUrl.Hostname())
-	if err := os.MkdirAll(outputPath, 0775); err != nil {
-		log.Fatal(err)
+func (u Urlset) Write(w io.Writer) error {
+	enc := xml.NewEncoder(w)
+	enc.Indent("", "  ")
+	w.Write([]byte(xml.Header))
+	if err := enc.Encode(u); err != nil {
+		return err
 	}
 
-	// pages := hrefs(resp.Body, base)
-	pages := bfs(*urlFlag, *maxDepth, *render)
-	toXml := urlset{
+	return nil
+}
+
+func Generate(urlStr string, depth int, render bool) Urlset {
+	pages := bfs(urlStr, depth, render)
+	toXml := Urlset{
 		Xmlns: xmlns,
 	}
 	for _, page := range pages {
 		toXml.Urls = append(toXml.Urls, loc{Value: page})
 	}
 
-	outputFile, err := os.Create(fmt.Sprintf("%s/sitemap.xml", outputPath))
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer outputFile.Close()
-	// enc := xml.NewEncoder(os.Stdout)
-	enc := xml.NewEncoder(outputFile)
-	enc.Indent("", "  ")
-	// fmt.Print(xml.Header)
-	outputFile.Write([]byte(xml.Header))
-	if err := enc.Encode(toXml); err != nil {
-		panic(err)
-	}
-	fmt.Println()
+	return toXml
 }
 
 func bfs(urlStr string, maxDepth int, render bool) []string {
 	seen := make(map[string]struct{})
-	var q map[string]struct{}
-	nq := map[string]struct{}{
+	var queue map[string]struct{}
+	newQueue := map[string]struct{}{
 		urlStr: {},
 	}
 
 	for i := 0; i <= maxDepth; i++ {
-		q, nq = nq, make(map[string]struct{})
-		if len(q) == 0 {
+		queue, newQueue = newQueue, make(map[string]struct{})
+		if len(queue) == 0 {
 			break
 		}
-		for url := range q {
+		for url := range queue {
 			if _, ok := seen[url]; ok {
 				continue
 			}
 			seen[url] = struct{}{}
-			for _, link := range get(url, render) {
+			links, err := get(url, render)
+			if err != nil {
+				fmt.Printf("failed to get url from %s\n", url)
+				continue
+			}
+			for _, link := range links {
 				if _, ok := seen[link]; !ok {
-					nq[link] = struct{}{}
+					newQueue[link] = struct{}{}
 				}
 			}
 		}
@@ -101,11 +85,10 @@ func bfs(urlStr string, maxDepth int, render bool) []string {
 	return ret
 }
 
-func get(urlStr string, render bool) []string {
+func get(urlStr string, render bool) ([]string, error) {
 	resp, err := http.Get(urlStr)
 	if err != nil {
-		// panic(err)
-		return []string{}
+		return []string{}, err
 	}
 	defer resp.Body.Close()
 
@@ -125,10 +108,28 @@ func get(urlStr string, render bool) []string {
 	base := baseUrl.String()
 
 	if render {
-		ret, _ := renderer.RenderPage(reqUrl.String())
-		return filter(hrefs(bytes.NewReader(ret), base), withPrefix(base))
+		rendererContext := renderer.RendererContext{
+			WindowWidth:  1920,
+			WindowHeight: 1080,
+			Timeout:      60,
+		}
+		ctx := renderer.WithRendererContext(context.Background(), &rendererContext)
+
+		fmt.Printf("Rendering: %s\n", reqUrl.String())
+		ret, err := renderer.RenderPage(ctx, reqUrl.String())
+		if err != nil {
+			return filter(
+					hrefs(resp.Body, base),
+					withPrefix(base),
+				), fmt.Errorf(
+					"failed to render page: %w",
+					err,
+				)
+		}
+
+		return filter(hrefs(bytes.NewReader(ret), base), withPrefix(base)), nil
 	} else {
-		return filter(hrefs(resp.Body, base), withPrefix(base))
+		return filter(hrefs(resp.Body, base), withPrefix(base)), nil
 	}
 }
 
