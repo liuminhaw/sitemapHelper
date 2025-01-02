@@ -20,7 +20,7 @@ func main() {
 	flag.Parse()
 
 	if len(flag.Args()) != 1 {
-		fmt.Printf("Usage: %s [options] url\n", os.Args[0])
+		fmt.Printf("Usage: %s [options] <url>\n", os.Args[0])
 		os.Exit(1)
 	}
 	inputUrl := flag.Arg(0)
