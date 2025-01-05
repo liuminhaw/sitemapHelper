@@ -2,5 +2,5 @@
 sitemaps/
 
 # Executable
-generator
+crawler
 *.out

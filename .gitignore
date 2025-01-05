@@ -15,7 +15,7 @@
 # vendor/
 
 # Result directories
-sitemaps/
+./sitemaps/
 
 # Build executable
 sitemap
