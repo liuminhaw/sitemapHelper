@@ -66,7 +66,7 @@ func ParseSitemap(r io.Reader) ([]UrlEntry, error) {
 
 		var respUrls []UrlEntry
 		for _, sitemap := range s.Sitemaps {
-			fmt.Printf("Parsing sitemap: %s\n", sitemap.Loc)
+			// fmt.Printf("Parsing sitemap: %s\n", sitemap.Loc)
 			resp, err := http.Get(sitemap.Loc)
 			if err != nil {
 				return nil, fmt.Errorf("failed to get sitemap: %w", err)

@@ -2,7 +2,6 @@ package sitemapHelper
 
 import (
 	"bytes"
-	"context"
 	"fmt"
 	"io"
 	"net/http"
@@ -49,7 +48,7 @@ func bfs(urlStr string, maxDepth int, render bool) []string {
 			seen[url] = struct{}{}
 			links, err := get(url, render)
 			if err != nil {
-				fmt.Printf("failed to get url from %s\n", url)
+				// fmt.Printf("failed to get url from %s\n", url)
 				continue
 			}
 			for _, link := range links {
@@ -67,11 +66,11 @@ func bfs(urlStr string, maxDepth int, render bool) []string {
 	return ret
 }
 
-// get fetches the specified URL and returns a slice of strings containing 
+// get fetches the specified URL and returns a slice of strings containing
 // all links found within the same domain.
 // If the render parameter is true, an automated browser is used to render the page before fetching the links.
 // This is particularly useful for client-rendered sites, such as Single Page Applications (SPAs).
-// The rendering functionality relies on the github.com/liuminhaw/renderer module, which uses chromedp 
+// The rendering functionality relies on the github.com/liuminhaw/renderer module, which uses chromedp
 // under the hood. As a result, a Chrome browser is required when rendering is enabled.
 func get(urlStr string, render bool) ([]string, error) {
 	resp, err := http.Get(urlStr)
@@ -96,15 +95,10 @@ func get(urlStr string, render bool) ([]string, error) {
 	base := baseUrl.String()
 
 	if render {
-		rendererContext := renderer.RendererContext{
-			WindowWidth:  1920,
-			WindowHeight: 1080,
-			Timeout:      60,
-		}
-		ctx := renderer.WithRendererContext(context.Background(), &rendererContext)
+		r := renderer.NewRenderer()
 
-		fmt.Printf("Rendering: %s\n", reqUrl.String())
-		ret, err := renderer.RenderPage(ctx, reqUrl.String())
+		// fmt.Printf("Rendering: %s\n", reqUrl.String())
+		ret, err := r.RenderPage(reqUrl.String(), nil)
 		if err != nil {
 			return filter(
 					hrefs(resp.Body, base),
@@ -138,7 +132,7 @@ func hrefs(r io.Reader, base string) []string {
 	return ret
 }
 
-// filter use the provided keepFn to filter the links slice and return a new slice 
+// filter use the provided keepFn to filter the links slice and return a new slice
 // containing only the links that satisfy the keepFn condition.
 func filter(links []string, keepFn func(string) bool) []string {
 	var ret []string
