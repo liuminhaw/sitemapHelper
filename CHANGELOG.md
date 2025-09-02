@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.2.1] - 2025-09-02
+
+### Changed
+
+- Update `renderer` dependency to latest version `v0.12.1` ([#7](https://github.com/liuminhaw/sitemapHelper/pull/7)) (Min-Haw, Liu)
+
 ## [0.2.0] - 2025-02-05
 
 ### Changed
@@ -9,6 +15,8 @@
 ## [0.1.0] - 2025-01-05
 
 _:seedling: Initial release._
+
+[0.2.1]: https://github.com/liuminhaw/sitemapHelper/releases/tag/v0.2.1
 
 [0.2.0]: https://github.com/liuminhaw/sitemapHelper/releases/tag/v0.2.0
 
